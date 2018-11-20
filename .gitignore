@@ -1,0 +1,11 @@
+# Unity
+
+.vs/
+App/
+Library/
+obj/
+Assembly-CSharp*
+Temp/
+*.sln
+.DS_Store
+
