@@ -43,6 +43,8 @@ namespace DetectionApp
 	{
 		[SerializeField] private Vision _vision;
 
+		// max number of objects to be detected
+
 		int objCount = 10;
 	
 		private GameObject[] _markerArray;
@@ -55,7 +57,7 @@ namespace DetectionApp
 			// This call not only prepares the managed wrapper for the specified image requests,
 			// but allocates VNRequest objects on the native side. You only need to call this
 			// method when you initialize your app, and later if you need to change the type
-			// of requests you want to perform. When performing rectangle detection requests,
+			// of requests you want to perform. 
 			// maxObservations refers to the maximum number of rectangles allowed to be recognized at once.
 			_vision.SetAndAllocateRequests(VisionRequest.Classification, maxObservations: objCount);
 
@@ -110,23 +112,37 @@ namespace DetectionApp
 
 			int index = -1;
 			foreach (VisionClassification obs in e.observations) {
+
+				// Ignore detections with low confidence
+
 				if (obs.confidence < 0.65)
 					continue;
 
 				index++;
 				string name = obs.identifier.Split(',')[0];
 
+				// create the Detection GameObject if necessary
+
 				if (_markerArray [index] == null) {
 					_markerArray [index] = GameObject.Instantiate<GameObject>(_detectionPrimitive);
 				} 
+
+				// Need to convert the box factors to be centered around 0
+				// The DetectionRectangle is going to be 1m from the camera so in fact
+				// these percentages become coordinates.
 
 				float xMin = (obs.xMin - 0.5f); 
 				float yMin = (obs.yMin - 0.5f); 
 				float xMax = (obs.xMax - 0.5f); 
 				float yMax = (obs.yMax - 0.5f);
+
+				// The center of the box is needed for the GameObject lcoal position
+
 				float xCenter = (xMax - xMin) / 2 + xMin;
 				float yCenter = -((yMax - yMin) / 2 + yMin);
 
+				// The primitive plane GameObject is 10 x 10 so the width (which will beused as the
+				// local scale for the plane) has to be divided by 10
 
 				float width = (xMax - xMin) / 10.0f;
 				float height = (yMax - yMin) / 10.0f;
@@ -136,15 +152,16 @@ namespace DetectionApp
 
 				Vector3 pos = new Vector3 (xCenter, yCenter, 0);
 
+				// Set the correct data in the child GameObjects
+
 				_markerArray [index].GetComponentInChildren<DetectionRectangle> ().SetData (pos, width, height);
 				_markerArray [index].GetComponentInChildren<DetectionName> ().SetData (pos, name);
 
-				// Closure is synchronous
 				foundArray[index] = true;
 			}
 			for (int i = 0; i < objCount; i++) {
 				if (_markerArray[i] != null) {
-					// Hide the marker if no rectangles were found
+					// Hide the marker if the index is unused or show if it is used
 					_markerArray[i].gameObject.SetActive (foundArray[i]);
 				}	
 			}				
@@ -154,6 +171,9 @@ namespace DetectionApp
 		{
 			for (int index = 0; index < objCount; index++) {
 				if (_markerArray [index] != null) {
+
+					// set the correct position and rotation. Position is 1m in front of the camera.
+
 					_markerArray [index].gameObject.transform.position = Camera.main.transform.position + Camera.main.transform.forward * 1;
 					_markerArray [index].gameObject.transform.rotation = Camera.main.transform.rotation; 
 				}
